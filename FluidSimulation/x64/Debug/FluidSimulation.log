@@ -1,4 +1,4 @@
 ﻿  FluidSimulation.cpp
-C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(335,25): warning C4244: инициализация: преобразование "int" в "float", возможна потеря данных
-C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(336,25): warning C4244: инициализация: преобразование "int" в "float", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(341,25): warning C4244: инициализация: преобразование "int" в "float", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(342,25): warning C4244: инициализация: преобразование "int" в "float", возможна потеря данных
   FluidSimulation.vcxproj -> C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\x64\Debug\FluidSimulation.exe

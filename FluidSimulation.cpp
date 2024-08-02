@@ -6,21 +6,22 @@
 #include <string>
 #include <algorithm>
 
-// Настройки
-const int WIDTH = 800;
+// Настройки 
+const int WIDTH = 900;
 const int HEIGHT = 600;
-const int FPS = 6000;
+const int FPS = 2400;
 const int PARTICLE_RADIUS = 15;
 const float GRAVITY = 0.0981f;
-const float REST_DENSITY = 0.0f;
+const float REST_DENSITY = 0.005f;
 const float GAS_CONSTANT = 0.5f;
 const float VISCOSITY = 0.5f;
-const int PARTICLE_CREATION_RATE = 10;
+const int PARTICLE_CREATION_RATE = 8;
 const float COHESION_STRENGTH = 0.0001f;
 const float DAMPING = 0.99f;
 const float DRAG_COEFFICIENT = 0.1f;
 const int GRAB_RADIUS = 100;
 const float SPRING_CONSTANT = 0.25f;
+const int MAX_PARTICLES = 512; // Ограничение на количество частиц
 
 // Препятствие
 const int OBSTACLE_X = 400;
@@ -46,6 +47,18 @@ void create_gradient(SDL_Color color1, SDL_Color color2, int steps, SDL_Color* g
         gradient[i].g = static_cast<Uint8>(color1.g * (1 - t) + color2.g * t);
         gradient[i].b = static_cast<Uint8>(color1.b * (1 - t) + color2.b * t);
         gradient[i].a = 255;
+    }
+}
+
+// Функция для рисования заполненного круга
+void filledCircleRGBA(SDL_Renderer* renderer, int x, int y, int radius, Uint8 r, Uint8 g, Uint8 b, Uint8 a) {
+    for (int dy = -radius; dy <= radius; ++dy) {
+        for (int dx = -radius; dx <= radius; ++dx) {
+            if (dx * dx + dy * dy <= radius * radius) {
+                SDL_SetRenderDrawColor(renderer, r, g, b, a);
+                SDL_RenderDrawPoint(renderer, x + dx, y + dy);
+            }
+        }
     }
 }
 
@@ -111,9 +124,10 @@ public:
         SDL_SetRenderDrawColor(renderer, color_gradient[colorIndex].r, color_gradient[colorIndex].g,
             color_gradient[colorIndex].b, color_gradient[colorIndex].a);
 
-        SDL_Rect rect = { static_cast<int>(x) - PARTICLE_RADIUS, static_cast<int>(y) - PARTICLE_RADIUS,
-                         PARTICLE_RADIUS * 2, PARTICLE_RADIUS * 2 };
-        SDL_RenderFillRect(renderer, &rect);
+        // Рисование круга вместо квадрата
+        filledCircleRGBA(renderer, static_cast<int>(x), static_cast<int>(y), PARTICLE_RADIUS,
+            color_gradient[colorIndex].r, color_gradient[colorIndex].g,
+            color_gradient[colorIndex].b, color_gradient[colorIndex].a);
     }
 
     void reset_velocity() {
@@ -219,17 +233,6 @@ void calculate_forces(std::vector<Particle>& particles) {
 
 }
 
-void filledCircleRGBA(SDL_Renderer * renderer, int x, int y, int radius, Uint8 r, Uint8 g, Uint8 b, Uint8 a) {
-        for (int dy = -radius; dy <= radius; ++dy) {
-            for (int dx = -radius; dx <= radius; ++dx) {
-                if (dx * dx + dy * dy <= radius * radius) {
-                    SDL_SetRenderDrawColor(renderer, r, g, b, a);
-                    SDL_RenderDrawPoint(renderer, x + dx, y + dy);
-                }
-            }
-        }
-}
-
 int main(int argc, char* argv[]) {
     // Инициализация SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -324,11 +327,14 @@ int main(int argc, char* argv[]) {
                         particle.reset_velocity();
                     }
                 }
+                else if (event.key.keysym.sym == SDLK_r) { // Удаление всех частиц
+                    particles.clear();
+                }
             }
         }
 
         // Создание новых частиц
-        if (mouse_pressed_left) {
+        if (mouse_pressed_left && particles.size() < MAX_PARTICLES) {
             for (int i = 0; i < PARTICLE_CREATION_RATE; ++i) {
                 int mouseX, mouseY;
                 SDL_GetMouseState(&mouseX, &mouseY);
@@ -380,11 +386,15 @@ int main(int argc, char* argv[]) {
             particle.draw(renderer);
         }
 
-        // Вывод FPS
+        // Вывод FPS и количества частиц
         Uint32 current_time = SDL_GetTicks();
         float fps = 1000.0f / (current_time - last_time);
         last_time = current_time;
-        std::string title = "2D Fluid Simulation - FPS: " + std::to_string(fps);
+
+        // Преобразование FPS в целое число
+        int fps_int = static_cast<int>(fps);
+
+        std::string title = "2D Fluid Simulation v0.910 | Particles: " + std::to_string(particles.size()) + "/" + std::to_string(MAX_PARTICLES) + " | R - clean up | FPS: " + std::to_string(fps_int);
         SDL_SetWindowTitle(window, title.c_str());
 
         SDL_RenderPresent(renderer);
