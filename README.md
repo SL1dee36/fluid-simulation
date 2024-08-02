@@ -1,6 +1,6 @@
 # 2D Fluid Simulation
 
-**Version:** 0.900
+**Version:** 0.910
 
 **Author:** [SL1dee36](https://github.com/SL1dee36)
 
