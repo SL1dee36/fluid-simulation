@@ -1,4 +1,5 @@
 ﻿#include <SDL.h>
+#include <SDL_opengl.h>
 #include <vector>
 #include <cmath>
 #include <iostream>
@@ -10,21 +11,24 @@
 
 // Настройки 
 const int WIDTH = 600;
-const int HEIGHT = 720;
-const int FPS = 2400;
-const int PARTICLE_RADIUS = 3;
+const int HEIGHT = 600;
+const int FPS = 5000;
+const int PARTICLE_RADIUS = 5;
 const float GRAVITY = 0.0981f;
-const float REST_DENSITY = 0.00001f;
-const float GAS_CONSTANT = 2.0;
+const float REST_DENSITY = 5.0f;
+const float GAS_CONSTANT = 2.0f;
 const float VISCOSITY = 0.9f;
 const int PARTICLE_CREATION_RATE = 10;
-const float COHESION_STRENGTH = 0.1f;
+const float COHESION_STRENGTH = 0.2f;
 const float DAMPING = 0.99f;
 const float DRAG_COEFFICIENT = 0.1f;
-const int GRAB_RADIUS = 100;
-const float SPRING_CONSTANT = 0.0f;
-const int MAX_PARTICLES = 5000; // Ограничение на количество частиц
-const float ROTATION_SPEED = 0.05f; // Скорость вращения частиц
+const int GRAB_RADIUS = 10;
+const float SPRING_CONSTANT = 0.2f;
+const int MAX_PARTICLES = 10000; // Ограничение на количество частиц
+const float ROTATION_SPEED = 10.0f; // Скорость вращения частиц
+
+#define DEG2RAD 0.017453292519943295f // PI / 180
+
 
 // Препятствие
 const int OBSTACLE_X = 400;
@@ -40,7 +44,7 @@ const int PAD_Y = 20;
 // Градиент цветов
 const int GRADIENT_STEPS = 256;
 SDL_Color color_gradient[GRADIENT_STEPS];
-const float max_speed = 16.0f;
+const float max_speed = 10.0f;
 
 // Количество потоков
 const int NUM_THREADS = std::thread::hardware_concurrency();
@@ -56,18 +60,6 @@ void create_gradient(SDL_Color color1, SDL_Color color2, int steps, SDL_Color* g
         gradient[i].g = static_cast<Uint8>(color1.g * (1 - t) + color2.g * t);
         gradient[i].b = static_cast<Uint8>(color1.b * (1 - t) + color2.b * t);
         gradient[i].a = 255;
-    }
-}
-
-// Функция для рисования заполненного круга
-void filledCircleRGBA(SDL_Renderer* renderer, int x, int y, int radius, Uint8 r, Uint8 g, Uint8 b, Uint8 a) {
-    for (int dy = -radius; dy <= radius; ++dy) {
-        for (int dx = -radius; dx <= radius; ++dx) {
-            if (dx * dx + dy * dy <= radius * radius) {
-                SDL_SetRenderDrawColor(renderer, r, g, b, a);
-                SDL_RenderDrawPoint(renderer, x + dx, y + dy);
-            }
-        }
     }
 }
 
@@ -130,17 +122,20 @@ public:
         vy *= DAMPING;
     }
 
-    void draw(SDL_Renderer* renderer) {
+    void draw() {
         // Использование градиента
         float speed = std::sqrt(vx * vx + vy * vy);
         int colorIndex = static_cast<int>(speed / max_speed * (GRADIENT_STEPS - 1));
         colorIndex = std::min(colorIndex, GRADIENT_STEPS - 1);
 
-        // Рисование круга с учетом вращения
-        // (Здесь можно добавить более сложную логику для визуализации вращения)
-        filledCircleRGBA(renderer, static_cast<int>(x), static_cast<int>(y), PARTICLE_RADIUS,
-            color_gradient[colorIndex].r, color_gradient[colorIndex].g,
-            color_gradient[colorIndex].b, color_gradient[colorIndex].a);
+        // Рисование круга с помощью OpenGL
+        glColor4ub(color_gradient[colorIndex].r, color_gradient[colorIndex].g, color_gradient[colorIndex].b, color_gradient[colorIndex].a);
+        glBegin(GL_POLYGON);
+        for (int i = 0; i < 360; i++) {
+            float degInRad = i * DEG2RAD;
+            glVertex2f(x + cos(degInRad) * PARTICLE_RADIUS, y + sin(degInRad) * PARTICLE_RADIUS);
+        }
+        glEnd();
     }
 
     void reset_velocity() {
@@ -265,23 +260,34 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Настройка OpenGL
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+
     // Создание окна
     SDL_Window* window = SDL_CreateWindow("2D Fluid Simulation", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
+        WIDTH, HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
     if (window == nullptr) {
         std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
         SDL_Quit();
         return 1;
     }
 
-    // Создание рендерера
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (renderer == nullptr) {
-        std::cerr << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
+    // Создание контекста OpenGL
+    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
+    if (gl_context == nullptr) {
+        std::cerr << "SDL_GL_CreateContext Error: " << SDL_GetError() << std::endl;
         SDL_DestroyWindow(window);
         SDL_Quit();
         return 1;
     }
+
+    // Инициализация OpenGL
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, WIDTH, HEIGHT, 0, 1, -1);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 
     // Создание градиента
     SDL_Color color1 = { 0, 0, 255, 255 };
@@ -406,24 +412,34 @@ int main(int argc, char* argv[]) {
         particles_mutex.unlock();
 
         // Отрисовка
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
+        glClear(GL_COLOR_BUFFER_BIT);
 
-        // Рисуем стены (оптимизировано - толщина 0)
-        SDL_SetRenderDrawColor(renderer, WALL_COLOR.r, WALL_COLOR.g, WALL_COLOR.b, WALL_COLOR.a);
-        SDL_RenderDrawLine(renderer, PAD_X, PAD_Y, WIDTH - PAD_X, PAD_Y);
-        SDL_RenderDrawLine(renderer, PAD_X, HEIGHT - PAD_Y, WIDTH - PAD_X, HEIGHT - PAD_Y);
-        SDL_RenderDrawLine(renderer, PAD_X, PAD_Y, PAD_X, HEIGHT - PAD_Y);
-        SDL_RenderDrawLine(renderer, WIDTH - PAD_X, PAD_Y, WIDTH - PAD_X, HEIGHT - PAD_Y);
+        // Рисуем стены
+        glColor4ub(WALL_COLOR.r, WALL_COLOR.g, WALL_COLOR.b, WALL_COLOR.a);
+        glBegin(GL_LINES);
+        glVertex2f(PAD_X, PAD_Y);
+        glVertex2f(WIDTH - PAD_X, PAD_Y);
+        glVertex2f(PAD_X, HEIGHT - PAD_Y);
+        glVertex2f(WIDTH - PAD_X, HEIGHT - PAD_Y);
+        glVertex2f(PAD_X, PAD_Y);
+        glVertex2f(PAD_X, HEIGHT - PAD_Y);
+        glVertex2f(WIDTH - PAD_X, PAD_Y);
+        glVertex2f(WIDTH - PAD_X, HEIGHT - PAD_Y);
+        glEnd();
 
-        // Рисуем препятствие (оптимизировано - рисование круга)
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        filledCircleRGBA(renderer, OBSTACLE_X, OBSTACLE_Y, OBSTACLE_RADIUS, 255, 255, 255, 255);
+        // Рисуем препятствие
+        glColor4ub(255, 255, 255, 255);
+        glBegin(GL_POLYGON);
+        for (int i = 0; i < 360; i++) {
+            float degInRad = i * DEG2RAD;
+            glVertex2f(OBSTACLE_X + cos(degInRad) * OBSTACLE_RADIUS, OBSTACLE_Y + sin(degInRad) * OBSTACLE_RADIUS);
+        }
+        glEnd();
 
         // Рисуем частицы
         particles_mutex.lock();
         for (Particle& particle : particles) {
-            particle.draw(renderer);
+            particle.draw();
         }
         particles_mutex.unlock();
 
@@ -435,15 +451,15 @@ int main(int argc, char* argv[]) {
         // Преобразование FPS в целое число
         int fps_int = static_cast<int>(fps);
 
-        std::string title = "2D Fluid Simulation v0.910 | Particles: " + std::to_string(particles.size()) + "/" + std::to_string(MAX_PARTICLES) + " | R - clean up | FPS: " + std::to_string(fps_int);
+        std::string title = "2D Fluid Simulation v0.950R | Particles: " + std::to_string(particles.size()) + "/" + std::to_string(MAX_PARTICLES) + " | R - clean up | FPS: " + std::to_string(fps_int);
         SDL_SetWindowTitle(window, title.c_str());
 
-        SDL_RenderPresent(renderer);
+        SDL_GL_SwapWindow(window);
         SDL_Delay(1000 / FPS);
     }
 
     // Освобождение ресурсов
-    SDL_DestroyRenderer(renderer);
+    SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;
