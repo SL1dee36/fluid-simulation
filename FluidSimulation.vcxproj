@@ -97,8 +97,9 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ExternalIncludePath>C:\Users\ARTBook\Documents\Projects\Libs\SDL2-2.30.6\include;C:\Users\ARTBook\Documents\Projects\Libs\SDL2_ttf-2.22.0\include;$(ExternalIncludePath)</ExternalIncludePath>
-    <LibraryPath>C:\Users\ARTBook\Documents\Projects\Libs\SDL2_ttf-2.22.0\lib\x64;C:\Users\ARTBook\Documents\Projects\Libs\SDL2-2.30.6\lib\x64;$(LibraryPath)</LibraryPath>
+    <ExternalIncludePath>C:\Users\ARTBook\Documents\Projects\Libs\glm;C:\Users\ARTBook\Documents\Projects\Libs\glfw-3.4.bin.WIN64\include;C:\Users\ARTBook\Documents\Projects\Libs\glew-2.1.0\include;C:\Users\ARTBook\Documents\Projects\Libs\SDL2_image-2.8.2\include;C:\Users\ARTBook\Documents\Projects\Libs\SDL2-2.30.6\include;C:\Users\ARTBook\Documents\Projects\Libs\SDL2_ttf-2.22.0\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <LibraryPath>C:\Users\ARTBook\Documents\Projects\Libs\glfw-3.4.bin.WIN64\lib-mingw-w64;C:\Users\ARTBook\Documents\Projects\Libs\glew-2.1.0\lib\Release\x64;C:\Users\ARTBook\Documents\Projects\Libs\SDL2_image-2.8.2\lib\x64\optional;C:\Users\ARTBook\Documents\Projects\Libs\SDL2_image-2.8.2\lib\x64;C:\Users\ARTBook\Documents\Projects\Libs\SDL2_ttf-2.22.0\lib\x64;C:\Users\ARTBook\Documents\Projects\Libs\SDL2-2.30.6\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Users\ARTBook\Documents\Projects\Libs\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='FluidSimulation3d|x64'">
     <ExternalIncludePath>C:\Users\ARTBook\Documents\Projects\Libs\SDL2-2.30.6\include;$(ExternalIncludePath)</ExternalIncludePath>
@@ -156,13 +157,15 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\ARTBook\Documents\Projects\Libs\SDL2_ttf-2.22.0\include;C:\Users\ARTBook\Documents\Projects\Libs\SDL2-2.30.6\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ARTBook\Documents\Projects\Libs\glm;C:\Users\ARTBook\Documents\Projects\Libs\SDL2_ttf-2.22.0\include;C:\Users\ARTBook\Documents\Projects\Libs\SDL2-2.30.6\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\ARTBook\Documents\Projects\Libs\SDL2_ttf-2.22.0\lib\x64;C:\Users\ARTBook\Documents\Projects\Libs\SDL2-2.30.6\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glu32.lib;opengl32.lib;SDL2main.lib;SDL2.lib;SDL2_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\ARTBook\Documents\Projects\Libs\SDL2_image-2.8.2\lib\x64;C:\Users\ARTBook\Documents\Projects\Libs\SDL2_ttf-2.22.0\lib\x64;C:\Users\ARTBook\Documents\Projects\Libs\SDL2-2.30.6\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL2_image.lib;glu32.lib;glew32.lib;opengl32.lib;SDL2main.lib;SDL2.lib;SDL2_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='FluidSimulation3d|x64'">
@@ -203,14 +206,14 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="FluidSimulation.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="FluidSimulation.rc" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="FluidSimulation.ico" />
     <Image Include="small.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="FluidSimulation.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

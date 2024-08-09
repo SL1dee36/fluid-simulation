@@ -8,8 +8,8 @@
 #include <algorithm>
 
 // Настройки
-const int WIDTH = 1920;
-const int HEIGHT = 1080;
+const int WIDTH = 600;
+const int HEIGHT = 720;
 const int FPS = 6000;
 const float PARTICLE_RADIUS = 10.0f;
 const float GRAVITY = 0.0981f;

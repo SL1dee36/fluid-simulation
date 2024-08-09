@@ -8,49 +8,57 @@
 #include <algorithm>
 #include <thread>
 #include <mutex>
+#include <immintrin.h> // Для SIMD инструкций
 
 // Настройки 
-const int WIDTH = 600;
-const int HEIGHT = 600;
+const int WIDTH = 770;
+const int HEIGHT = 500;
 const int FPS = 5000;
-const int PARTICLE_RADIUS = 5;
-const float GRAVITY = 0.0981f;
-const float REST_DENSITY = 5.0f;
-const float GAS_CONSTANT = 2.0f;
-const float VISCOSITY = 0.9f;
-const int PARTICLE_CREATION_RATE = 10;
-const float COHESION_STRENGTH = 0.2f;
-const float DAMPING = 0.99f;
-const float DRAG_COEFFICIENT = 0.1f;
-const int GRAB_RADIUS = 10;
-const float SPRING_CONSTANT = 0.2f;
-const int MAX_PARTICLES = 10000; // Ограничение на количество частиц
-const float ROTATION_SPEED = 10.0f; // Скорость вращения частиц
+const int PARTICLE_RADIUS = 7;
+float GRAVITY = 0.0981f;
+float REST_DENSITY = 10.0f;
+float GAS_CONSTANT = 2.0f;
+float VISCOSITY = 0.9f;
+int PARTICLE_CREATION_RATE = 10;
+float COHESION_STRENGTH = 0.2f;
+float DAMPING = 0.99f;
+float DRAG_COEFFICIENT = 0.1f;
+const int GRAB_RADIUS = 50;
+float SPRING_CONSTANT = 0.2f;
+const int MAX_PARTICLES = 9000; // Ограничение на количество частиц
+float ROTATION_SPEED = 20.0f; // Скорость вращения частиц
+int IMPULSE_STRENGTH = 50; // Сила импульса (теперь переменная)
 
 #define DEG2RAD 0.017453292519943295f // PI / 180
 
 
 // Препятствие
-const int OBSTACLE_X = 400;
-const int OBSTACLE_Y = 300;
-const int OBSTACLE_RADIUS = 100;
+const int OBSTACLE_X = 200;
+const int OBSTACLE_Y = 200;
+const int OBSTACLE_RADIUS = 0;
 
 // Стены
 const int WALL_THICKNESS = 0;
 const SDL_Color WALL_COLOR = { 255, 255, 255, 255 };
-const int PAD_X = 20;
+const int PAD_X = 240;
 const int PAD_Y = 20;
 
 // Градиент цветов
-const int GRADIENT_STEPS = 256;
+const int GRADIENT_STEPS = 4096;
 SDL_Color color_gradient[GRADIENT_STEPS];
-const float max_speed = 10.0f;
+const float max_speed = 16.0f;
 
 // Количество потоков
 const int NUM_THREADS = std::thread::hardware_concurrency();
 
 // Мьютекс для синхронизации доступа к particles
 std::mutex particles_mutex;
+
+// Флаг для отображения стрелок
+bool show_arrows = false;
+
+// Переменная для хранения состояния дебаг-меню
+bool debug_mode = false;
 
 // Функция для создания градиента цветов
 void create_gradient(SDL_Color color1, SDL_Color color2, int steps, SDL_Color* gradient) {
@@ -102,6 +110,12 @@ public:
             vy *= -0.7f;
         }
 
+        // Добавлено условие для верхней границы
+        if (y < PARTICLE_RADIUS + PAD_Y) {
+            y = PARTICLE_RADIUS + PAD_Y;
+            vy *= -0.7f;
+        }
+
         // Столкновение с препятствием (оптимизировано)
         float dx = x - OBSTACLE_X;
         float dy = y - OBSTACLE_Y;
@@ -123,19 +137,28 @@ public:
     }
 
     void draw() {
-        // Использование градиента
+        // Использование градиента для визуализации скорости
         float speed = std::sqrt(vx * vx + vy * vy);
         int colorIndex = static_cast<int>(speed / max_speed * (GRADIENT_STEPS - 1));
         colorIndex = std::min(colorIndex, GRADIENT_STEPS - 1);
 
         // Рисование круга с помощью OpenGL
-        glColor4ub(color_gradient[colorIndex].r, color_gradient[colorIndex].g, color_gradient[colorIndex].b, color_gradient[colorIndex].a);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        glColor4ub(color_gradient[colorIndex].r, color_gradient[colorIndex].g, color_gradient[colorIndex].b, 128);
         glBegin(GL_POLYGON);
-        for (int i = 0; i < 360; i++) {
-            float degInRad = i * DEG2RAD;
+
+        // Выбор количества сегментов в зависимости от debug_mode
+        int num_segments = debug_mode ? 0 : 32;
+
+        for (int i = 0; i < num_segments; i++) {
+            float degInRad = i * 2 * M_PI / num_segments;
             glVertex2f(x + cos(degInRad) * PARTICLE_RADIUS, y + sin(degInRad) * PARTICLE_RADIUS);
         }
         glEnd();
+
+        glDisable(GL_BLEND);
     }
 
     void reset_velocity() {
@@ -166,25 +189,46 @@ public:
             other->angular_velocity -= torque / other->density;
         }
     }
+
+    // Применение импульса к частице
+    void apply_impulse(float impulse_x, float impulse_y) {
+        vx += impulse_x / density;
+        vy += impulse_y / density;
+    }
 };
 
 // Оптимизированная функция для нахождения соседей
+// Используем SIMD для ускорения вычислений расстояний
 void find_neighbors(std::vector<Particle>& particles, int start, int end) {
     for (size_t i = start; i < end; ++i) {
         particles[i].near_particles.clear();
         for (size_t j = 0; j < particles.size(); ++j) {
             if (i == j) continue;
-            float dx = particles[i].x - particles[j].x;
-            float dy = particles[i].y - particles[j].y;
-            float distance_sq = dx * dx + dy * dy;
-            float radius_sum_sq = (2 * PARTICLE_RADIUS) * (2 * PARTICLE_RADIUS);
 
-            if (distance_sq < radius_sum_sq) {
+            // SIMD оптимизация: вычисляем 4 расстояния одновременно
+            __m128 px = _mm_set1_ps(particles[i].x);
+            __m128 py = _mm_set1_ps(particles[i].y);
+            __m128 ox = _mm_set1_ps(particles[j].x);
+            __m128 oy = _mm_set1_ps(particles[j].y);
+
+            __m128 dx = _mm_sub_ps(px, ox);
+            __m128 dy = _mm_sub_ps(py, oy);
+
+            __m128 distance_sq = _mm_add_ps(_mm_mul_ps(dx, dx), _mm_mul_ps(dy, dy));
+
+            // Сравниваем с квадратом суммы радиусов
+            __m128 radius_sum_sq = _mm_set1_ps((2 * PARTICLE_RADIUS) * (2 * PARTICLE_RADIUS));
+            __m128 cmp = _mm_cmplt_ps(distance_sq, radius_sum_sq);
+
+            // Если хоть один элемент сравнения истинный, добавляем в соседей
+            int mask = _mm_movemask_ps(cmp);
+            if (mask) {
                 particles[i].near_particles.push_back(&particles[j]);
             }
         }
     }
 }
+
 
 // Оптимизированная функция для вычисления плотности и давления
 void calculate_density_pressure(std::vector<Particle>& particles, int start, int end) {
@@ -253,6 +297,56 @@ void update_physics_thread(std::vector<Particle>& particles, int start, int end)
     calculate_forces(particles, start, end);
 }
 
+// Структура для хранения данных ползунка
+struct Slider {
+    std::string label;
+    float* value;
+    float min_value;
+    float max_value;
+    int x, y, width, height;
+};
+
+// Функция для отрисовки ползунка
+void draw_slider(Slider slider) {
+    // Отрисовка фона ползунка
+    glColor4ub(200, 200, 200, 255);
+    glBegin(GL_QUADS);
+    glVertex2f(slider.x, slider.y);
+    glVertex2f(slider.x + slider.width, slider.y);
+    glVertex2f(slider.x + slider.width, slider.y + slider.height);
+    glVertex2f(slider.x, slider.y + slider.height);
+    glEnd();
+
+    // Вычисление позиции ползунка
+    float slider_pos = slider.x + slider.width * (*slider.value - slider.min_value) / (slider.max_value - slider.min_value);
+
+    // Отрисовка ползунка
+    glColor4ub(100, 100, 100, 255);
+    glBegin(GL_QUADS);
+    glVertex2f(slider_pos - 5, slider.y);
+    glVertex2f(slider_pos + 5, slider.y);
+    glVertex2f(slider_pos + 5, slider.y + slider.height);
+    glVertex2f(slider_pos - 5, slider.y + slider.height);
+    glEnd();
+
+    // Отрисовка текста
+    // (Здесь вам нужно использовать библиотеку для отрисовки текста, 
+    //  например, SDL_ttf. Этот код показывает только позицию текста)
+    // int text_x = slider.x + slider.width / 2;
+    // int text_y = slider.y + slider.height + 10;
+    // render_text(slider.label, text_x, text_y);
+}
+
+// Функция для обработки событий ползунка
+bool handle_slider_event(Slider slider, int mouseX, int mouseY) {
+    if (mouseX >= slider.x && mouseX <= slider.x + slider.width &&
+        mouseY >= slider.y && mouseY <= slider.y + slider.height) {
+        *slider.value = slider.min_value + (mouseX - slider.x) * (slider.max_value - slider.min_value) / slider.width;
+        return true;
+    }
+    return false;
+}
+
 int main(int argc, char* argv[]) {
     // Инициализация SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -262,7 +356,7 @@ int main(int argc, char* argv[]) {
 
     // Настройка OpenGL
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 32);
 
     // Создание окна
     SDL_Window* window = SDL_CreateWindow("2D Fluid Simulation", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
@@ -290,8 +384,8 @@ int main(int argc, char* argv[]) {
     glLoadIdentity();
 
     // Создание градиента
-    SDL_Color color1 = { 0, 0, 255, 255 };
-    SDL_Color color2 = { 255, 0, 0, 255 };
+    SDL_Color color1 = { 0, 0, 255, 255 }; // Синий
+    SDL_Color color2 = { 255, 255, 255, 255 }; // Желтый
     create_gradient(color1, color2, GRADIENT_STEPS, color_gradient);
 
     // Создание списка частиц
@@ -300,6 +394,7 @@ int main(int argc, char* argv[]) {
     // Флаги для кнопок мыши
     bool mouse_pressed_left = false;
     bool mouse_pressed_right = false;
+    bool mouse_pressed_central = false;
 
     // Список захваченных частиц
     std::vector<Particle*> grabbed_particles;
@@ -308,6 +403,17 @@ int main(int argc, char* argv[]) {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> distrib(-PARTICLE_RADIUS * 2, PARTICLE_RADIUS * 2);
+
+    // Создание ползунков
+    std::vector<Slider> sliders = {
+        {"Gravity", &GRAVITY, 0.0f, 1.0f, 10, 10, 100, 20},
+        {"Rest Density", &REST_DENSITY, 1.0f, 20.0f, 10, 40, 100, 20},
+        {"Gas Constant", &GAS_CONSTANT, 0.1f, 5.0f, 10, 70, 100, 20},
+        {"Viscosity", &VISCOSITY, 0.1f, 2.0f, 10, 100, 100, 20},
+        {"Cohesion", &COHESION_STRENGTH, 0.0f, 1.0f, 10, 130, 100, 20},
+        {"Spring Constant", &SPRING_CONSTANT, 0.0f, 1.0f, 10, 160, 100, 20},
+        // Добавьте остальные ползунки здесь...
+    };
 
     // Главный цикл
     bool running = true;
@@ -322,8 +428,14 @@ int main(int argc, char* argv[]) {
             else if (event.type == SDL_MOUSEBUTTONDOWN) {
                 if (event.button.button == SDL_BUTTON_LEFT) {
                     mouse_pressed_left = true;
-                }
 
+                    // Обработка событий ползунков
+                    int mouseX, mouseY;
+                    SDL_GetMouseState(&mouseX, &mouseY);
+                    for (Slider& slider : sliders) {
+                        handle_slider_event(slider, mouseX, mouseY);
+                    }
+                }
                 else if (event.button.button == SDL_BUTTON_RIGHT) {
                     mouse_pressed_right = true;
                     int mouseX, mouseY;
@@ -340,6 +452,28 @@ int main(int argc, char* argv[]) {
                         }
                     }
                 }
+                // Обработка нажатия средней кнопки мыши
+                else if (event.button.button == SDL_BUTTON_MIDDLE) {
+                    mouse_pressed_central = true;
+                    int mouseX, mouseY;
+                    SDL_GetMouseState(&mouseX, &mouseY);
+                    // Применение импульса к частицам в радиусе действия
+                    for (Particle& particle : particles) {
+                        float dx = particle.x - mouseX;
+                        float dy = particle.y - mouseY;
+                        float distance_sq = dx * dx + dy * dy;
+                        float impulse_radius_sq = GRAB_RADIUS * GRAB_RADIUS;
+
+                        if (distance_sq <= impulse_radius_sq) {
+                            float distance = std::sqrt(distance_sq);
+                            // Расчет импульса в зависимости от расстояния
+                            float impulse_strength = IMPULSE_STRENGTH * (1 - distance / GRAB_RADIUS);
+                            float impulse_x = impulse_strength * dx / distance;
+                            float impulse_y = impulse_strength * dy / distance;
+                            particle.apply_impulse(impulse_x, impulse_y);
+                        }
+                    }
+                }
             }
             else if (event.type == SDL_MOUSEBUTTONUP) {
                 if (event.button.button == SDL_BUTTON_LEFT) {
@@ -352,6 +486,9 @@ int main(int argc, char* argv[]) {
                     }
                     grabbed_particles.clear();
                 }
+                else if (event.button.button == SDL_BUTTON_MIDDLE) {
+                    mouse_pressed_central = false;
+                }
             }
             else if (event.type == SDL_KEYDOWN) {
                 if (event.key.keysym.sym == SDLK_s) {
@@ -361,6 +498,23 @@ int main(int argc, char* argv[]) {
                 }
                 else if (event.key.keysym.sym == SDLK_r) { // Удаление всех частиц
                     particles.clear();
+                }
+                // Управление силой импульса с помощью клавиш
+                else if (event.key.keysym.sym == SDLK_UP) {
+                    IMPULSE_STRENGTH += 5.0f;
+                }
+                else if (event.key.keysym.sym == SDLK_DOWN) {
+                    IMPULSE_STRENGTH = std::max(0.0f, IMPULSE_STRENGTH - 5.0f);
+                }
+                // Включение/выключение стрелок при нажатии на 1 - Дебаг меню
+                else if (event.key.keysym.sym == SDLK_1) {
+                    debug_mode = !debug_mode;
+                    show_arrows = !show_arrows;
+                }
+                // При нажатии 0 - const int NUM_SEGMENTS = 32
+                else if (event.key.keysym.sym == SDLK_0) {
+                    debug_mode = false; // Выключаем дебаг-режим
+                    show_arrows = false;
                 }
             }
         }
@@ -388,6 +542,28 @@ int main(int argc, char* argv[]) {
                 particle->vx = dx * DRAG_COEFFICIENT;
                 particle->vy = dy * DRAG_COEFFICIENT;
             }
+        }
+
+        if (mouse_pressed_central) {
+            int mouseX, mouseY;
+            SDL_GetMouseState(&mouseX, &mouseY);
+            // Применение импульса к частицам в радиусе действия
+            for (Particle& particle : particles) {
+                float dx = particle.x - mouseX;
+                float dy = particle.y - mouseY;
+                float distance_sq = dx * dx + dy * dy;
+                float impulse_radius_sq = GRAB_RADIUS * GRAB_RADIUS;
+
+                if (distance_sq <= impulse_radius_sq) {
+                    float distance = std::sqrt(distance_sq);
+                    // Расчет импульса в зависимости от расстояния
+                    float impulse_strength = IMPULSE_STRENGTH * (1 - distance / GRAB_RADIUS);
+                    float impulse_x = impulse_strength * dx / distance;
+                    float impulse_y = impulse_strength * dy / distance;
+                    particle.apply_impulse(impulse_x, impulse_y);
+                }
+            }
+
         }
 
         // Обновление физики в нескольких потоках
@@ -430,18 +606,43 @@ int main(int argc, char* argv[]) {
         // Рисуем препятствие
         glColor4ub(255, 255, 255, 255);
         glBegin(GL_POLYGON);
-        for (int i = 0; i < 360; i++) {
-            float degInRad = i * DEG2RAD;
+        const int NUM_SEGMENTS_OBSTACLE = 365; // Уменьшаем количество сегментов для препятствия
+        for (int i = 0; i < NUM_SEGMENTS_OBSTACLE; i++) {
+            float degInRad = i * 2 * M_PI / NUM_SEGMENTS_OBSTACLE;
             glVertex2f(OBSTACLE_X + cos(degInRad) * OBSTACLE_RADIUS, OBSTACLE_Y + sin(degInRad) * OBSTACLE_RADIUS);
         }
         glEnd();
 
-        // Рисуем частицы
         particles_mutex.lock();
         for (Particle& particle : particles) {
             particle.draw();
         }
         particles_mutex.unlock();
+
+        // Рисуем стрелки поверх частиц
+        particles_mutex.lock();
+        for (Particle& particle : particles) {
+            if (show_arrows) {
+                float speed = std::sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+                if (speed > 0.1f) { // Рисуем стрелку только если скорость значительна
+                    float arrow_length = 10.0f;
+                    float arrow_angle = atan2(particle.vy, particle.vx);
+                    float arrow_tip_x = particle.x + arrow_length * cos(arrow_angle);
+                    float arrow_tip_y = particle.y + arrow_length * sin(arrow_angle);
+                    glColor4ub(255, 0, 0, 255); // Красный цвет для стрелки
+                    glBegin(GL_LINES);
+                    glVertex2f(particle.x, particle.y);
+                    glVertex2f(arrow_tip_x, arrow_tip_y);
+                    glEnd();
+                }
+            }
+        }
+        particles_mutex.unlock();
+
+        // Отрисовка ползунков
+        for (Slider& slider : sliders) {
+            draw_slider(slider);
+        }
 
         // Вывод FPS и количества частиц
         Uint32 current_time = SDL_GetTicks();
@@ -451,7 +652,7 @@ int main(int argc, char* argv[]) {
         // Преобразование FPS в целое число
         int fps_int = static_cast<int>(fps);
 
-        std::string title = "2D Fluid Simulation v0.950R | Particles: " + std::to_string(particles.size()) + "/" + std::to_string(MAX_PARTICLES) + " | R - clean up | FPS: " + std::to_string(fps_int);
+        std::string title = "2D Fluid Simulation v0.975R | Particles: " + std::to_string(particles.size()) + "/" + std::to_string(MAX_PARTICLES) + " | R - clean up | FPS: " + std::to_string(fps_int) + " | Impulse Strength: " + std::to_string(IMPULSE_STRENGTH);
         SDL_SetWindowTitle(window, title.c_str());
 
         SDL_GL_SwapWindow(window);

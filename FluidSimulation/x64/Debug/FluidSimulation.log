@@ -1,6 +1,26 @@
 ﻿  FluidSimulation.cpp
-C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(373,25): warning C4244: инициализация: преобразование "int" в "float", возможна потеря данных
-C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(374,25): warning C4244: инициализация: преобразование "int" в "float", возможна потеря данных
-C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(395,34): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
-C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(398,21): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(156,28): warning C4244: инициализация: преобразование "double" в "float", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(314,32): warning C4244: аргумент: преобразование "int" в "GLfloat", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(314,22): warning C4244: аргумент: преобразование "int" в "GLfloat", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(315,47): warning C4244: аргумент: преобразование "int" в "GLfloat", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(315,25): warning C4244: аргумент: преобразование "int" в "GLfloat", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(316,50): warning C4244: аргумент: преобразование "int" в "GLfloat", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(316,25): warning C4244: аргумент: преобразование "int" в "GLfloat", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(317,35): warning C4244: аргумент: преобразование "int" в "GLfloat", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(317,22): warning C4244: аргумент: преобразование "int" в "GLfloat", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(326,38): warning C4244: аргумент: преобразование "int" в "GLfloat", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(327,38): warning C4244: аргумент: преобразование "int" в "GLfloat", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(328,41): warning C4244: аргумент: преобразование "int" в "GLfloat", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(329,41): warning C4244: аргумент: преобразование "int" в "GLfloat", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(504,41): warning C4244: +=: преобразование "float" в "int", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(507,48): warning C4244: =: преобразование "const _Ty" в "int", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(507,48): warning C4244:         with
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(507,48): warning C4244:         [
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(507,48): warning C4244:             _Ty=float
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(507,48): warning C4244:         ]
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(527,25): warning C4244: инициализация: преобразование "int" в "float", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(528,25): warning C4244: инициализация: преобразование "int" в "float", возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(571,34): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(574,21): warning C4267: инициализация: преобразование из "size_t" в "int"; возможна потеря данных
+C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\FluidSimulation.cpp(611,28): warning C4244: инициализация: преобразование "double" в "float", возможна потеря данных
   FluidSimulation.vcxproj -> C:\Users\ARTBook\Documents\Projects\Window App\Water\FluidSimulation\x64\Debug\FluidSimulation.exe
