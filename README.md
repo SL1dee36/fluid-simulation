@@ -6,6 +6,10 @@
 
 This program simulates a 2D fluid using the Smoothed Particle Hydrodynamics (SPH) method. It allows users to interact with the fluid by creating new particles and manipulating existing ones.
 
+Currect verison demo:
+https://www.youtube.com/watch?v=xbR4eWPZM4s
+
+Old verison demo:
 https://github.com/user-attachments/assets/170b9447-a075-4b4f-9c04-e5bc13744b59
 
 ## Features
