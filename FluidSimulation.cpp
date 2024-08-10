@@ -1,4 +1,4 @@
-﻿#include <SDL.h>
+#include <SDL.h>
 #include <SDL_opengl.h>
 #include <vector>
 #include <cmath>
@@ -14,12 +14,12 @@
 const int WIDTH = 770;
 const int HEIGHT = 500;
 const int FPS = 5000;
-const int PARTICLE_RADIUS = 7;
+const int PARTICLE_RADIUS = 5;
 float GRAVITY = 0.0981f;
 float REST_DENSITY = 10.0f;
 float GAS_CONSTANT = 2.0f;
 float VISCOSITY = 0.9f;
-int PARTICLE_CREATION_RATE = 10;
+int PARTICLE_CREATION_RATE = 100;
 float COHESION_STRENGTH = 0.2f;
 float DAMPING = 0.99f;
 float DRAG_COEFFICIENT = 0.1f;
